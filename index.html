@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEON RIFT — Arena</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap');
+*{box-sizing:border-box} html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050711;color:#fff;font-family:Rajdhani,Arial,sans-serif}
+body{background:radial-gradient(ellipse at 50% 45%,#15133c 0%,#080b1c 52%,#03050c 100%)}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#hud{position:absolute;inset:0;pointer-events:none;padding:22px;display:flex;justify-content:space-between;align-items:flex-start}
+.panel{background:linear-gradient(135deg,rgba(15,22,51,.88),rgba(8,10,26,.72));border:1px solid rgba(99,240,255,.35);box-shadow:0 0 25px #00d9ff18,inset 0 0 20px #6a4dff12;border-radius:14px;padding:12px 16px;backdrop-filter:blur(8px)}
+.brand{font:900 20px Orbitron;letter-spacing:3px;color:#7af7ff;text-shadow:0 0 15px #00cfff}
+.small{font-size:14px;color:#aab9dc;letter-spacing:1px}.value{font:700 22px Orbitron;color:#fff}
+#stats{display:flex;gap:10px} .stat{min-width:95px}
+#healthWrap{width:190px;height:9px;border-radius:20px;background:#252744;margin-top:7px;overflow:hidden}
+#health{height:100%;width:100%;background:linear-gradient(90deg,#ff477e,#ffb45c);box-shadow:0 0 12px #ff477e}
+#xpWrap{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);width:min(420px,60vw);height:8px;border-radius:20px;background:#222747;border:1px solid #58608b;overflow:hidden}
+#xp{height:100%;width:0;background:linear-gradient(90deg,#7b5cff,#52f5ff);box-shadow:0 0 15px #52f5ff}
+#level{position:absolute;bottom:34px;left:50%;transform:translateX(-50%);font:700 12px Orbitron;letter-spacing:2px;color:#a8b5ff}
+#hint{position:absolute;bottom:22px;right:24px;color:#9ba8c9;font-size:14px;text-align:right;line-height:1.5}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,4,14,.72);backdrop-filter:blur(9px);padding:20px}
+.card{width:min(560px,94vw);text-align:center;padding:34px 30px;border-radius:22px;background:linear-gradient(145deg,rgba(21,27,65,.97),rgba(8,11,30,.97));border:1px solid #6a7aff77;box-shadow:0 0 70px #564aff30,inset 0 0 35px #1adfff0c}
+h1{font:900 clamp(30px,7vw,58px) Orbitron;margin:0 0 8px;letter-spacing:3px;color:#fff;text-shadow:0 0 22px #6d66ff}
+.subtitle{color:#73f5ff;font:700 14px Orbitron;letter-spacing:4px;margin-bottom:18px}
+p{color:#c0c9e7;font-size:18px;line-height:1.45;margin:12px 0 22px}
+button{pointer-events:auto;border:0;border-radius:10px;padding:14px 26px;background:linear-gradient(100deg,#6557ff,#00cce8);color:#fff;font:900 15px Orbitron;letter-spacing:2px;cursor:pointer;box-shadow:0 0 24px #3b9dff55;transition:.15s}
+button:hover{transform:translateY(-2px);filter:brightness(1.15)}
+#upgradeChoices{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:20px}
+.choice{padding:15px 10px;background:#141c40;border:1px solid #5968bb;border-radius:12px;cursor:pointer;pointer-events:auto}
+.choice:hover{background:#252b63;border-color:#62efff}
+.choice b{display:block;font:700 12px Orbitron;color:#7cf5ff;margin-bottom:8px}
+.choice span{font-size:15px;color:#d7def8}
+#toast{position:absolute;top:22%;left:50%;transform:translateX(-50%);font:700 15px Orbitron;color:#7cf7ff;text-shadow:0 0 15px #00dfff;opacity:0;transition:opacity .3s;pointer-events:none;text-align:center}
+@media(max-width:600px){#hud{padding:12px}#stats{gap:5px}.panel{padding:9px}.stat{min-width:65px}.value{font-size:16px}.brand{font-size:15px}#hint{display:none}#upgradeChoices{grid-template-columns:1fr}.card{padding:24px 18px}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud">
+  <div class="panel"><div class="brand">NEON RIFT</div><div class="small">SURVIVAL PROTOCOL</div><div id="healthWrap"><div id="health"></div></div><div class="small" id="hpText">100 / 100 HP</div></div>
+  <div id="stats">
+    <div class="panel stat"><div class="small">WYNIK</div><div class="value" id="score">0</div></div>
+    <div class="panel stat"><div class="small">KRYształy</div><div class="value" id="gems">0</div></div>
+    <div class="panel stat"><div class="small">FALA</div><div class="value" id="wave">1</div></div>
+  </div>
+</div>
+<div id="level">POZIOM 1 • 0 / 100 XP</div><div id="xpWrap"><div id="xp"></div></div>
+<div id="hint">WASD / STRZAŁKI — RUCH<br>MYSZ — CELOWANIE<br>KLIK / SPACJA — ATAK<br>SHIFT — SZYBKI UNIK</div>
+<div id="toast"></div>
+<div class="overlay" id="start">
+ <div class="card">
+  <h1>NEON RIFT</h1><div class="subtitle">WEJDŹ DO SZCZELINY</div>
+  <p>Przetrwaj fale cyberprzeciwników, zbieraj kryształy i ulepszaj swoją moc. Każda fala jest trudniejsza. Jak daleko dojdziesz?</p>
+  <p><b style="color:#79f5ff">WASD</b> ruch · <b style="color:#79f5ff">MYSZ</b> celowanie · <b style="color:#79f5ff">KLIK</b> strzał · <b style="color:#79f5ff">SHIFT</b> unik</p>
+  <button id="startBtn">ROZPOCZNIJ GRĘ</button>
+ </div>
+</div>
+<div class="overlay" id="upgrade" style="display:none"><div class="card"><div class="subtitle">NOWY POZIOM</div><h1 style="font-size:34px">WYBIERZ MOC</h1><p>Wybierz ulepszenie — każde zmieni Twój styl walki.</p><div id="upgradeChoices"></div></div></div>
+<div class="overlay" id="over" style="display:none"><div class="card"><div class="subtitle">KONIEC SYMULACJI</div><h1>GAME OVER</h1><p id="finalStats"></p><button id="restartBtn">JESZCZE RAZ</button></div></div>
+<script>
+(()=>{
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+let W,H,dpr, running=false,last=0,player,enemies=[],bullets=[],enemyShots=[],orbs=[],particles=[],keys={},mouse={x:0,y:0,down:false};
+let score=0,gems=0,wave=1,level=1,xp=0,xpNeed=100,spawnTimer=0,shootTimer=0,waveTimer=0,shake=0;
+const $=id=>document.getElementById(id);
+function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);if(player){player.x=Math.min(W-35,Math.max(35,player.x));player.y=Math.min(H-35,Math.max(35,player.y));}}
+addEventListener('resize',resize);resize();
+function reset(){score=0;gems=0;wave=1;level=1;xp=0;xpNeed=100;enemies=[];bullets=[];enemyShots=[];orbs=[];particles=[];player={x:W/2,y:H/2,r:13,hp:100,maxHp:100,speed:245,damage:24,fireRate:.28,shotSpeed:620,range:700,multishot:1,magnet:100,dash:0,dashCd:0,invuln:0};spawnTimer=1;waveTimer=0;updateHud();}
+function updateHud(){$('score').textContent=score.toLocaleString('pl-PL');$('gems').textContent=gems;$('wave').textContent=wave;$('health').style.width=(100*player.hp/player.maxHp)+'%';$('hpText').textContent=Math.ceil(player.hp)+' / '+player.maxHp+' HP';$('level').textContent=`POZIOM ${level} • ${xp} / ${xpNeed} XP`;$('xp').style.width=(100*xp/xpNeed)+'%';}
+function toast(t){$('toast').textContent=t;$('toast').style.opacity=1;setTimeout(()=>$('toast').style.opacity=0,1100);}
+function burst(x,y,color,n=12){for(let i=0;i<n;i++){let a=Math.random()*Math.PI*2,s=40+Math.random()*230;particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.25+Math.random()*.5,max:.75,color,size:2+Math.random()*3});}}
+function spawnEnemy(){let side=Math.floor(Math.random()*4),x=side===0? -25:side===1?W+25:Math.random()*W,y=side===2?-25:side===3?H+25:Math.random()*H;let type=Math.random()<Math.min(.35,.12+wave*.012)?'tank':Math.random()<.35?'runner':'drone';let scale=type==='tank'?1.55:type==='runner'?.78:1;enemies.push({x,y,r:13*scale,hp:(type==='tank'?100:type==='runner'?27:45)+wave*5,max:(type==='tank'?100:type==='runner'?27:45)+wave*5,speed:(type==='runner'?145:type==='tank'?48:78)+wave*2,damage:type==='tank'?22:12,type,hit:0,shoot:1+Math.random()*1.5});}
+function fire(){if(shootTimer>0)return;shootTimer=player.fireRate;let a=Math.atan2(mouse.y-player.y,mouse.x-player.x);for(let i=0;i<player.multishot;i++){let spread=(i-(player.multishot-1)/2)*.13,ang=a+spread;bullets.push({x:player.x+Math.cos(ang)*17,y:player.y+Math.sin(ang)*17,vx:Math.cos(ang)*player.shotSpeed,vy:Math.sin(ang)*player.shotSpeed,life:player.range/player.shotSpeed,damage:player.damage});}burst(player.x+Math.cos(a)*16,player.y+Math.sin(a)*16,'#74f7ff',3);}
+const upgrades=[
+{name:'NADPRĘDKOŚĆ',desc:'+18% szybkości ruchu',apply:p=>p.speed*=1.18},
+{name:'MOCNIEJSZY BLASTER',desc:'+35% obrażeń',apply:p=>p.damage*=1.35},
+{name:'SZYBKOSTRZELNOŚĆ',desc:'Strzelasz o 22% szybciej',apply:p=>p.fireRate*=.78},
+{name:'POTRÓJNY STRZAŁ',desc:'Dodaje jeden pocisk',apply:p=>p.multishot=Math.min(5,p.multishot+1)},
+{name:'NANOPANCERZ',desc:'+25 maks. HP i leczenie',apply:p=>{p.maxHp+=25;p.hp=Math.min(p.maxHp,p.hp+45)}},
+{name:'MAGNES KOSMICZNY',desc:'Zasięg zbierania +90',apply:p=>p.magnet+=90},
+{name:'TURBODOŁADOWANIE',desc:'+20% prędkości pocisków',apply:p=>p.shotSpeed*=1.2},
+{name:'REGENERATOR',desc:'Odzyskaj 35 HP',apply:p=>p.hp=Math.min(p.maxHp,p.hp+35)}
+];
+function levelUp(){level++;xp-=xpNeed;xpNeed=Math.floor(xpNeed*1.32);running=false;let picks=[...upgrades].sort(()=>Math.random()-.5).slice(0,3);$('upgradeChoices').innerHTML='';picks.forEach(u=>{let d=document.createElement('div');d.className='choice';d.innerHTML=`<b>${u.name}</b><span>${u.desc}</span>`;d.onclick=()=>{u.apply(player);$('upgrade').style.display='none';running=true;last=performance.now();toast('ULEPSZENIE AKTYWNE');updateHud();requestAnimationFrame(loop);};$('upgradeChoices').appendChild(d);});$('upgrade').style.display='flex';updateHud();}
+function endGame(){running=false;$('finalStats').innerHTML=`Wynik: <b style="color:#7cf5ff">${score}</b><br>Przetrwane fale: <b style="color:#7cf5ff">${wave}</b> · Poziom: <b style="color:#7cf5ff">${level}</b><br>Zebrane kryształy: <b style="color:#7cf5ff">${gems}</b>`;$('over').style.display='flex';}
+function circle(x,y,r,color,glow){ctx.save();ctx.shadowBlur=glow||0;ctx.shadowColor=color;ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.restore();}
+function drawGrid(t){ctx.fillStyle='#070a19';ctx.fillRect(0,0,W,H);ctx.save();ctx.strokeStyle='rgba(70,100,180,.11)';ctx.lineWidth=1;let gap=48,ox=(t*.012)%gap,oy=(t*.008)%gap;for(let x=ox;x<W;x+=gap){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=oy;y<H;y+=gap){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}ctx.restore();for(let i=0;i<55;i++){let x=(i*173.7)%W,y=(i*91.3)%H;circle(x,y,1,'rgba(130,160,255,.4)');}}
+function update(dt){let p=player;let dx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),dy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0),len=Math.hypot(dx,dy)||1;dx/=len;dy/=len;
+p.dashCd=Math.max(0,p.dashCd-dt);p.invuln=Math.max(0,p.invuln-dt);p.dash=Math.max(0,p.dash-dt);if((keys.shift)&&p.dashCd<=0){p.dash=.16;p.dashCd=2.1;p.invuln=.35;burst(p.x,p.y,'#65f4ff',15)}
+let sp=p.speed*(p.dash>0?3.5:1);p.x=Math.max(p.r,Math.min(W-p.r,p.x+dx*sp*dt));p.y=Math.max(p.r,Math.min(H-p.r,p.y+dy*sp*dt));
+shootTimer-=dt;if(mouse.down||keys[' '])fire();
+spawnTimer-=dt;if(spawnTimer<=0){spawnEnemy();spawnTimer=Math.max(.22,1.05-wave*.055);}
+waveTimer+=dt;if(waveTimer>24){wave++;waveTimer=0;toast('FALA '+wave+' — NADCHODZĄ!');}
+for(let i=enemies.length-1;i>=0;i--){let e=enemies[i],a=Math.atan2(p.y-e.y,p.x-e.x),dist=Math.hypot(p.x-e.x,p.y-e.y);e.x+=Math.cos(a)*e.speed*dt;e.y+=Math.sin(a)*e.speed*dt;e.hit=Math.max(0,e.hit-dt);if(e.type==='drone'&&dist<360){e.shoot-=dt;if(e.shoot<=0){enemyShots.push({x:e.x,y:e.y,vx:Math.cos(a)*210,vy:Math.sin(a)*210,life:2});e.shoot=2.1+Math.random();}}
+if(dist<e.r+p.r&&p.invuln<=0){p.hp-=e.damage*dt;shake=5;if(p.hp<=0){p.hp=0;updateHud();endGame();return;}}
+}
+for(let i=bullets.length-1;i>=0;i--){let b=bullets[i];b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;let dead=b.life<=0||b.x<0||b.x>W||b.y<0||b.y>H;for(let j=enemies.length-1;j>=0&&!dead;j--){let e=enemies[j];if(Math.hypot(e.x-b.x,e.y-b.y)<e.r+4){e.hp-=b.damage;e.hit=.09;dead=true;burst(b.x,b.y,'#68f6ff',3);if(e.hp<=0){score+=e.type==='tank'?35:e.type==='runner'?15:20;xp+=e.type==='tank'?35:20;orbs.push({x:e.x,y:e.y,r:6,type:'xp'});if(Math.random()<.38)orbs.push({x:e.x+8,y:e.y,r:5,type:'gem'});burst(e.x,e.y,e.type==='tank'?'#ffb45e':'#b06cff',13);enemies.splice(j,1);if(xp>=xpNeed){levelUp();return;}}}}if(dead)bullets.splice(i,1);}
+for(let i=enemyShots.length-1;i>=0;i--){let b=enemyShots[i];b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;if(Math.hypot(p.x-b.x,p.y-b.y)<p.r+5&&p.invuln<=0){p.hp-=13;p.invuln=.35;burst(p.x,p.y,'#ff558e',8);enemyShots.splice(i,1);if(p.hp<=0){p.hp=0;updateHud();endGame();return;}}else if(b.life<=0)enemyShots.splice(i,1);}
+for(let i=orbs.length-1;i>=0;i--){let o=orbs[i],d=Math.hypot(p.x-o.x,p.y-o.y);if(d<p.magnet+35){o.x+=(p.x-o.x)*Math.min(1,dt*4.5);o.y+=(p.y-o.y)*Math.min(1,dt*4.5);}if(d<22){if(o.type==='xp')xp+=15;else{gems++;score+=5;}burst(o.x,o.y,o.type==='xp'?'#7b72ff':'#5effc1',5);orbs.splice(i,1);if(xp>=xpNeed){levelUp();return;}}}
+for(let i=particles.length-1;i>=0;i--){let q=particles[i];q.x+=q.vx*dt;q.y+=q.vy*dt;q.vx*=.96;q.vy*=.96;q.life-=dt;if(q.life<=0)particles.splice(i,1);}
+if(shake>0)shake=Math.max(0,shake-dt*22);updateHud();}
+function draw(t){ctx.save();if(shake)ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);drawGrid(t);
+for(let o of orbs){circle(o.x,o.y,o.r,o.type==='xp'?'#8874ff':'#54ffc2',14);circle(o.x,o.y,2,'#fff',3)}
+for(let b of bullets){circle(b.x,b.y,4,'#83faff',13);ctx.strokeStyle='#83faff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(b.x-b.vx*.025,b.y-b.vy*.025);ctx.lineTo(b.x,b.y);ctx.stroke();}
+for(let b of enemyShots)circle(b.x,b.y,5,'#ff578c',13);
+for(let e of enemies){ctx.save();ctx.translate(e.x,e.y);let c=e.type==='tank'?'#ffad5c':e.type==='runner'?'#ff4f9a':'#b47aff';ctx.rotate(t*.001*(e.type==='runner'?2:1));ctx.shadowBlur=18;ctx.shadowColor=c;ctx.fillStyle=e.hit?'#fff':c;ctx.beginPath();if(e.type==='tank'){ctx.rect(-e.r,-e.r,e.r*2,e.r*2)}else{ctx.moveTo(0,-e.r-4);ctx.lineTo(e.r+4,0);ctx.lineTo(0,e.r+4);ctx.lineTo(-e.r-4,0);ctx.closePath()}ctx.fill();ctx.restore();ctx.fillStyle='#24203a';ctx.fillRect(e.x-e.r,e.y-e.r-10,e.r*2,3);ctx.fillStyle='#ff638c';ctx.fillRect(e.x-e.r,e.y-e.r-10,e.r*2*Math.max(0,e.hp/e.max),3);}
+let p=player;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(Math.atan2(mouse.y-p.y,mouse.x-p.x));ctx.shadowBlur=25;ctx.shadowColor='#55f6ff';ctx.fillStyle=p.invuln>0?'#fff':'#64f5ff';ctx.beginPath();ctx.moveTo(19,0);ctx.lineTo(-11,-11);ctx.lineTo(-6,0);ctx.lineTo(-11,11);ctx.closePath();ctx.fill();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(0,0,4,0,Math.PI*2);ctx.fill();ctx.restore();if(p.invuln>0){ctx.strokeStyle='rgba(100,245,255,.7)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(p.x,p.y,23+Math.sin(t*.02)*3,0,Math.PI*2);ctx.stroke();}
+for(let q of particles){ctx.globalAlpha=Math.max(0,q.life/.75);circle(q.x,q.y,q.size,q.color,5);}ctx.globalAlpha=1;ctx.restore();}
+function loop(t){if(!running)return;let dt=Math.min(.033,(t-last)/1000||0);last=t;update(dt);draw(t);if(running)requestAnimationFrame(loop);}
+function start(){reset();$('start').style.display='none';$('over').style.display='none';$('upgrade').style.display='none';running=true;last=performance.now();requestAnimationFrame(loop);}
+$('startBtn').onclick=start;$('restartBtn').onclick=start;
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase()))e.preventDefault();});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+canvas.addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY;});canvas.addEventListener('mousedown',()=>mouse.down=true);addEventListener('mouseup',()=>mouse.down=false);
+canvas.addEventListener('touchstart',e=>{let t=e.touches[0];mouse.x=t.clientX;mouse.y=t.clientY;mouse.down=true;},{passive:true});canvas.addEventListener('touchmove',e=>{let t=e.touches[0];mouse.x=t.clientX;mouse.y=t.clientY;},{passive:true});canvas.addEventListener('touchend',()=>mouse.down=false);
+mouse.x=W/2+100;mouse.y=H/2;
+draw(0);
+})();
+</script>
+</body>
+</html>
